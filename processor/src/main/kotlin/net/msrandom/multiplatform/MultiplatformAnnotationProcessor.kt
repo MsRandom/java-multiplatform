@@ -77,7 +77,7 @@ class MultiplatformAnnotationProcessor(
                     actual.kind == ElementKind.METHOD &&
                             actualOwnerName contentEquals expectOwnerName.toString() + ACTUAL_ANNOTATION_NAME &&
                             actual.simpleName == expect.simpleName &&
-                            actual.parameters.map(VariableElement::asType) == expect.parameters.map(VariableElement::asType)
+                            actual.parameters.map(VariableElement::asType).zip(expect.parameters.map(VariableElement::asType)).all { (a, b) -> a.toString() == b.toString() }
                 }
 
                 getActual(implementations) {

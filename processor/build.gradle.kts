@@ -1,4 +1,4 @@
-dimport org.gradle.internal.component.external.model.ProjectDerivedCapability
+import org.gradle.internal.component.external.model.ProjectDerivedCapability
 import org.gradle.internal.jvm.Jvm
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -53,6 +53,8 @@ java {
         capability(capability.group, capability.name, capability.version)
 
         usingSourceSet(sourceSets[java11.name])
+
+        withSourcesJar()
     }
 }
 
@@ -64,6 +66,7 @@ configurations.named(java11.apiElementsConfigurationName) {
     attributes {
         attribute(TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE, objects.named(TargetJvmEnvironment.STANDARD_JVM))
         attribute(KotlinPlatformType.attribute, KotlinPlatformType.jvm)
+        attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 11)
     }
 }
 
@@ -71,6 +74,13 @@ configurations.named(java11.runtimeElementsConfigurationName) {
     attributes {
         attribute(TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE, objects.named(TargetJvmEnvironment.STANDARD_JVM))
         attribute(KotlinPlatformType.attribute, KotlinPlatformType.jvm)
+        attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 11)
+    }
+}
+
+configurations.named(java11.sourcesElementsConfigurationName) {
+    attributes {
+        attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 11)
     }
 }
 
