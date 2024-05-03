@@ -138,9 +138,11 @@ class MultiplatformAnnotationProcessor(
             it !in implementations.values &&
                     (it.enclosingElement !is TypeElement || it.enclosingElement.getAnnotation(Actual::class.java) == null)
         }?.let {
-            val ownerName = (it.enclosingElement as TypeElement).qualifiedName
+            val ownerName = (it.enclosingElement as? TypeElement)?.qualifiedName?.let {
+                "$it."
+            } ?: ""
 
-            throw IllegalArgumentException("$ownerName.${it.simpleName} includes an @$ACTUAL_ANNOTATION_NAME without a corresponding @$EXPECT_ANNOTATION_NAME")
+            throw IllegalArgumentException("$ownerName${it.simpleName} includes an @$ACTUAL_ANNOTATION_NAME without a corresponding @$EXPECT_ANNOTATION_NAME")
         }
 
         fun clearActual(unit: JCCompilationUnit) {
