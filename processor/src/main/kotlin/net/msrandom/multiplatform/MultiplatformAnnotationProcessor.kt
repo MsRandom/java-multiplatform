@@ -1,10 +1,13 @@
 package net.msrandom.multiplatform
 
 import com.sun.source.tree.ImportTree
+import com.sun.source.tree.MethodTree
 import com.sun.source.tree.Tree
+import com.sun.source.tree.VariableTree
 import com.sun.tools.javac.api.JavacTrees
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.tree.JCTree.JCCompilationUnit
+import com.sun.tools.javac.tree.JCTree.JCMethodDecl
 import com.sun.tools.javac.tree.JCTree.JCVariableDecl
 import com.sun.tools.javac.util.Context
 import net.msrandom.multiplatform.annotations.Actual
@@ -16,18 +19,12 @@ import javax.lang.model.element.*
 private val EXPECT_ANNOTATION_NAME = Expect::class.simpleName!!
 private val ACTUAL_ANNOTATION_NAME = Actual::class.simpleName!!
 
-private inline fun <T> getActual(implementations: List<T>, name: () -> CharSequence) = when {
-    implementations.isEmpty() -> throw IllegalArgumentException("${name()} includes @$EXPECT_ANNOTATION_NAME with no @$ACTUAL_ANNOTATION_NAME")
-    implementations.size > 1 -> throw UnsupportedOperationException("${name()} includes @$EXPECT_ANNOTATION_NAME has more than one @$ACTUAL_ANNOTATION_NAME")
-    else -> implementations.first()
-}
-
 // Loaded reflectively after com.sun.tools.javac packages are exported
 @Suppress("unused")
 class MultiplatformAnnotationProcessor(
     private val processingEnvironment: ProcessingEnvironment,
     private val platformHelper: PlatformHelper,
-    private val generateStubs: Boolean
+    private val generateStubs: Boolean,
 ) {
     private val context: Context
     private val trees: JavacTrees
@@ -37,6 +34,29 @@ class MultiplatformAnnotationProcessor(
 
         context = processingEnvironment.context
         trees = JavacTrees.instance(context)
+    }
+
+    private inline fun <T> getActual(implementations: List<T>, name: () -> CharSequence) = when {
+        implementations.isEmpty() -> if (generateStubs) {
+            null
+        } else {
+            throw IllegalArgumentException("${name()} includes @$EXPECT_ANNOTATION_NAME with no @$ACTUAL_ANNOTATION_NAME")
+        }
+
+        implementations.size > 1 -> throw UnsupportedOperationException("${name()} includes @$EXPECT_ANNOTATION_NAME has more than one @$ACTUAL_ANNOTATION_NAME")
+        else -> implementations.first()
+    }
+
+    private fun checkField(expect: VariableElement) {
+        if ((trees.getTree(expect) as VariableTree).initializer != null) {
+            throw UnsupportedOperationException("@$EXPECT_ANNOTATION_NAME field ${(expect.enclosingElement as TypeElement).qualifiedName}.${expect.simpleName} has initializer")
+        }
+    }
+
+    private fun checkMethod(expect: ExecutableElement) {
+        if (trees.getTree(expect).getBody() != null) {
+            throw UnsupportedOperationException("@$EXPECT_ANNOTATION_NAME method ${(expect.enclosingElement as TypeElement).qualifiedName}.${expect.simpleName} has body")
+        }
     }
 
     fun process(roundEnvironment: RoundEnvironment) {
@@ -51,7 +71,7 @@ class MultiplatformAnnotationProcessor(
                     actual is TypeElement && actual.qualifiedName contentEquals expect.qualifiedName.toString() + ACTUAL_ANNOTATION_NAME
                 }
 
-                val actual = getActual(implementations, expect::getQualifiedName)
+                val actual = getActual(implementations, expect::getQualifiedName) ?: return@associateWith null
 
                 if (actual.kind != expect.kind) {
                     throw UnsupportedOperationException("@$ACTUAL_ANNOTATION_NAME type is a different kind from its @$EXPECT_ANNOTATION_NAME, expected ${expect.kind} but found ${actual.kind}")
@@ -102,9 +122,9 @@ class MultiplatformAnnotationProcessor(
 
                 val actual = getActual(implementations) {
                     "$expectOwnerName.${expect.simpleName}"
-                }
+                } ?: return@associateWith null
 
-                if (actual.asType() != expect.asType()) {
+                if (actual.asType().toString() != expect.asType().toString()) {
                     throw UnsupportedOperationException("@$EXPECT_ANNOTATION_NAME field has differing type from @$ACTUAL_ANNOTATION_NAME, expected ${expect.asType()} but found ${actual.asType()}")
                 }
 
@@ -134,48 +154,125 @@ class MultiplatformAnnotationProcessor(
             unit?.let(::clearActual)
         }
 
+        val handledClasses = hashSetOf<TypeElement>()
+
         for ((expect, actual) in implementations.entries) {
             when (expect) {
                 is ExecutableElement -> {
+                    val expectTree = trees.getTree(expect)
+
+                    if (actual == null) {
+                        stub(expectTree, context)
+
+                        continue
+                    }
+
                     require(actual is ExecutableElement)
 
-                    val expectTree = trees.getTree(expect)
                     val actualTree = trees.getTree(actual)
 
-                    if (expectTree.getBody() != null) {
-                        throw UnsupportedOperationException("@$EXPECT_ANNOTATION_NAME method ${(expect.enclosingElement as TypeElement).qualifiedName}.${expect.simpleName} has body")
-                    }
+                    checkMethod(expect)
 
                     expectTree.body = actualTree.getBody()
 
-                    clearActualParent(actual)
+                    expectTree.mods.annotations.firstOrNull { Expect::class.qualifiedName.equals(it.type?.toString()) }?.let {
+                        expectTree.mods.annotations = JavaCompilerList.filter(expectTree.mods.annotations, it)
+                    }
+
+                    val expectOwner = expect.enclosingElement
+
+                    if (expectOwner !in handledClasses) {
+                        val expectCompilationUnit = trees.getPath(expectOwner).compilationUnit as JCCompilationUnit
+                        val actualCompilationUnit = trees.getPath(actual.enclosingElement).compilationUnit as JCCompilationUnit
+
+                        val imports = (expectCompilationUnit.imports + actualCompilationUnit.imports).filterNot {
+                            it.kind == Tree.Kind.IMPORT && (it as ImportTree).qualifiedIdentifier.toString().startsWith(Expect::class.java.getPackage().name)
+                        }
+
+                        val unitDefs =
+                            (listOf(expectCompilationUnit.defs.head) + imports + expectCompilationUnit.typeDecls)
+
+                        expectCompilationUnit.defs = JavaCompilerList.from(unitDefs)
+
+                        clearActualParent(actual)
+
+                        handledClasses.add(expectOwner as TypeElement)
+                    }
                 }
 
                 is VariableElement -> {
+                    val expectTree = trees.getTree(expect) as JCVariableDecl
+
+                    if (actual == null) {
+                        stub(expectTree, context)
+
+                        continue
+                    }
+
                     require(actual is VariableElement)
 
-                    val expectTree = trees.getTree(expect) as JCVariableDecl
                     val actualTree = trees.getTree(actual) as JCVariableDecl
 
-                    if (expectTree.initializer != null) {
-                        throw UnsupportedOperationException("@$EXPECT_ANNOTATION_NAME field ${(expect.enclosingElement as TypeElement).qualifiedName}.${expect.simpleName} has initializer")
-                    }
+                    checkField(expect)
 
                     expectTree.init = actualTree.initializer
 
-                    clearActualParent(actual)
+                    expectTree.mods.annotations.firstOrNull { Expect::class.qualifiedName.equals(it.type?.toString()) }?.let {
+                        expectTree.mods.annotations = JavaCompilerList.filter(expectTree.mods.annotations, it)
+                    }
+
+                    val expectOwner = expect.enclosingElement
+
+                    if (expectOwner !in handledClasses) {
+                        val expectCompilationUnit = trees.getPath(expectOwner).compilationUnit as JCCompilationUnit
+                        val actualCompilationUnit = trees.getPath(actual.enclosingElement).compilationUnit as JCCompilationUnit
+
+                        val imports = (expectCompilationUnit.imports + actualCompilationUnit.imports).filterNot {
+                            it.kind == Tree.Kind.IMPORT && (it as ImportTree).qualifiedIdentifier.toString().startsWith(Expect::class.java.getPackage().name)
+                        }
+
+                        val unitDefs =
+                            (listOf(expectCompilationUnit.defs.head) + imports + expectCompilationUnit.typeDecls)
+
+                        expectCompilationUnit.defs = JavaCompilerList.from(unitDefs)
+
+                        clearActualParent(actual)
+
+                        handledClasses.add(expectOwner as TypeElement)
+                    }
                 }
 
                 is TypeElement -> {
+                    val expectTree = trees.getTree(expect)
+
+                    if (actual == null) {
+                        for (member in expectTree.members) {
+                            if (member is VariableTree) {
+                                stub(member as JCVariableDecl, context)
+                            } else if (member is MethodTree) {
+                                stub(member as JCMethodDecl, context)
+                            }
+                        }
+
+                        continue
+                    }
+
                     require(actual is TypeElement)
 
-                    val expectTree = trees.getTree(expect)
                     val actualTree = trees.getTree(actual)
 
                     val expectCompilationUnit = trees.getPath(expect).compilationUnit as JCCompilationUnit
                     val actualCompilationUnit = trees.getPath(actual).compilationUnit as JCCompilationUnit
 
                     expectTree.prepareClass(processingEnvironment, platformHelper.elementRemover)
+
+                    for (member in expect.enclosedElements) {
+                        if (member is VariableElement) {
+                            // checkField(member)
+                        } else if (member is ExecutableElement) {
+                            // checkMethod(member)
+                        }
+                    }
 
                     val members = actualTree.members.map {
                         it.clone(context)

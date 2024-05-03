@@ -1,20 +1,62 @@
 package net.msrandom.multiplatform
 
+import com.sun.source.tree.PrimitiveTypeTree
+import com.sun.source.tree.Tree
+import com.sun.tools.javac.code.TypeTag
 import com.sun.tools.javac.comp.Enter
 import com.sun.tools.javac.tree.JCTree
-import com.sun.tools.javac.tree.JCTree.JCCompilationUnit
-import com.sun.tools.javac.tree.JCTree.JCVariableDecl
-import com.sun.tools.javac.tree.JCTree.JCMethodDecl
-import com.sun.tools.javac.tree.JCTree.JCExpression
-import com.sun.tools.javac.tree.JCTree.JCClassDecl
+import com.sun.tools.javac.tree.JCTree.*
 import com.sun.tools.javac.tree.TreeMaker
 import com.sun.tools.javac.util.Context
 import com.sun.tools.javac.util.List
 import net.msrandom.multiplatform.annotations.Actual
 import net.msrandom.multiplatform.bootstrap.ElementRemover
 import javax.annotation.processing.ProcessingEnvironment
+import javax.lang.model.type.TypeKind
 
 typealias JavaCompilerList<T> = List<T>
+
+fun typeDefault(expression: Tree, maker: TreeMaker): JCExpression = if (expression is PrimitiveTypeTree) {
+    val defaultValue = when (expression.primitiveTypeKind) {
+        TypeKind.BOOLEAN -> false
+        TypeKind.BYTE -> 0.toByte()
+        TypeKind.SHORT -> 0.toShort()
+        TypeKind.INT -> 0
+        TypeKind.LONG -> 0L
+        TypeKind.CHAR -> 0.toChar()
+        TypeKind.FLOAT -> 0f
+        TypeKind.DOUBLE -> 0.0
+        else -> throw UnsupportedOperationException()
+    }
+
+    maker.Literal(defaultValue)
+} else {
+    maker.Literal(TypeTag.BOT, null)
+}
+
+fun stub(tree: JCVariableDecl, context: Context) {
+    if (tree.init != null) return
+
+    val treeMaker = TreeMaker.instance(context)
+
+    tree.init = typeDefault(tree.getType(), treeMaker)
+}
+
+fun stub(tree: JCMethodDecl, context: Context) {
+    if (tree.body != null) return
+
+    val treeMaker = TreeMaker.instance(context)
+    val returnType = tree.returnType
+
+    val statements: JavaCompilerList<JCStatement> =
+        if (returnType == null || returnType is PrimitiveTypeTree && returnType.primitiveTypeKind == TypeKind.VOID) {
+            JavaCompilerList.nil()
+        } else {
+            JavaCompilerList.of(treeMaker.Return(typeDefault(tree.returnType, treeMaker)))
+        }
+
+    tree.body = treeMaker.Block(0, statements)
+}
 
 fun JCTree.clone(context: Context): JCTree {
     val treeMaker = TreeMaker.instance(context)

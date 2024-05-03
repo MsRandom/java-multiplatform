@@ -53,7 +53,7 @@ class MultiplatformAnnotationProcessorBootstrap : Processor {
 
         platformHelper.addExports(processorClass)
 
-        processor = processorConstructor.newInstance(processingEnv, platformHelper, processingEnv.options[GENERATE_EXPECT_STUBS_OPTION].toBoolean())
+        processor = processorConstructor.newInstance(processingEnv, platformHelper, GENERATE_EXPECT_STUBS_OPTION in processingEnv.options)
     }
 
     override fun process(annotations: MutableSet<out TypeElement>, roundEnvironment: RoundEnvironment): Boolean {
