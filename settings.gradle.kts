@@ -1,23 +1,16 @@
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
-rootProject.name = "multiplatform"
+rootProject.name = "java-multiplatform"
 
-fun includeSubModules(vararg names: String) {
-    include(*names)
+fun includeSubproject(name: String, path: String) {
+    include(name)
 
-    for (name in names) {
-        project(":$name").name = "${rootProject.name}-$name"
-    }
+    project(":$name").projectDir = file(path)
 }
 
-includeSubModules(
-    "annotations",
-    "processor",
-    "test-project",
-)
+includeSubproject("java-virtual-source-sets-idea", "virtual-source-sets/idea")
+includeSubproject("java-virtual-source-sets", "virtual-source-sets/gradle-plugin")
 
-include("idea")
-
-project(":idea").let {
-    it.name = "java-${rootProject.name}-${it.name}"
-}
+includeSubproject( "java-expect-actual-idea", "expect-actual/idea")
+includeSubproject("java-expect-actual-annotations", "expect-actual/annotations")
+includeSubproject("java-expect-actual-processor", "expect-actual/processor")
