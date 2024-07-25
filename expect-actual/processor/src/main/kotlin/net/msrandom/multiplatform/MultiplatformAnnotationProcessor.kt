@@ -161,6 +161,8 @@ class MultiplatformAnnotationProcessor(
         for ((expect, actual) in implementations.entries) {
             when (expect) {
                 is ExecutableElement -> {
+                    checkMethod(expect)
+
                     val expectTree = trees.getTree(expect)
 
                     if (actual == null) {
@@ -172,8 +174,6 @@ class MultiplatformAnnotationProcessor(
                     require(actual is ExecutableElement)
 
                     val actualTree = trees.getTree(actual)
-
-                    checkMethod(expect)
 
                     expectTree.body = actualTree.getBody()
 
@@ -203,6 +203,8 @@ class MultiplatformAnnotationProcessor(
                 }
 
                 is VariableElement -> {
+                    checkField(expect)
+
                     val expectTree = trees.getTree(expect) as JCVariableDecl
 
                     if (actual == null) {
@@ -214,8 +216,6 @@ class MultiplatformAnnotationProcessor(
                     require(actual is VariableElement)
 
                     val actualTree = trees.getTree(actual) as JCVariableDecl
-
-                    checkField(expect)
 
                     expectTree.init = actualTree.initializer
 
@@ -269,10 +269,16 @@ class MultiplatformAnnotationProcessor(
                     expectTree.prepareClass(processingEnvironment, platformHelper.elementRemover)
 
                     for (member in expect.enclosedElements) {
-                        if (member is VariableElement) {
-                            // checkField(member)
-                        } else if (member is ExecutableElement) {
-                            // checkMethod(member)
+                        if (member.getAnnotation(Expect::class.java) != null) {
+                            throw UnsupportedOperationException("${expect.qualifiedName}.${member.simpleName} has @$EXPECT_ANNOTATION_NAME while owned by @$EXPECT_ANNOTATION_NAME type")
+                        }
+
+                        if (!platformHelper.isGenerated(processingEnvironment, member)) {
+                            if (member is VariableElement) {
+                                checkField(member)
+                            } else if (member is ExecutableElement) {
+                                checkMethod(member)
+                            }
                         }
                     }
 

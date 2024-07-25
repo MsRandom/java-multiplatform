@@ -3,6 +3,9 @@ package net.msrandom.multiplatform.java11
 import net.msrandom.multiplatform.bootstrap.ElementRemover
 import net.msrandom.multiplatform.bootstrap.PlatformHelper
 import sun.misc.Unsafe
+import javax.annotation.processing.ProcessingEnvironment
+import javax.lang.model.element.Element
+import javax.lang.model.util.Elements
 
 private val UNSAFE = Unsafe::class.java.getDeclaredField("theUnsafe").apply { isAccessible = true }[null] as Unsafe
 
@@ -41,4 +44,7 @@ class Java11PlatformHelper : PlatformHelper {
             addExports.invoke(jdkCompilerModule, pkg, ownModule)
         }
     }
+
+    override fun isGenerated(processingEnvironment: ProcessingEnvironment, element: Element) =
+        processingEnvironment.elementUtils.getOrigin(element) != Elements.Origin.EXPLICIT
 }
