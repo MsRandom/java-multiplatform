@@ -30,6 +30,8 @@ repositories {
 
 dependencies {
     api(group = "dev.gradleplugins", name = "gradle-api", version = "8.2")
+
+    compileOnly(kotlin("gradle-plugin"))
 }
 
 publishing {

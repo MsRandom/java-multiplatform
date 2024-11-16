@@ -14,6 +14,7 @@ sealed interface VirtualSourceSetsModel {
 
 class VirtualSourceSetsModelImpl(override val sourceSets: List<VirtualSourceSet>) : VirtualSourceSetsModel, Serializable
 
+@AutoService(ToolingModelBuilder::class)
 class VirtualSourceSetModelBuilder : ToolingModelBuilder {
     override fun canBuild(modelName: String) =
         modelName == VirtualSourceSetsModel::class.qualifiedName
