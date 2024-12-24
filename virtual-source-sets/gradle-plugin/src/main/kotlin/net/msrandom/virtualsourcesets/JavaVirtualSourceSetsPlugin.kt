@@ -6,7 +6,6 @@ import org.gradle.api.Project
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.plugins.JavaPlugin
 import org.gradle.api.provider.HasMultipleValues
-import org.gradle.api.provider.ListProperty
 import org.gradle.api.tasks.SourceSet
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.tooling.provider.model.ToolingModelBuilderRegistry
@@ -17,6 +16,7 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
 import org.jetbrains.kotlin.gradle.tasks.K2MultiplatformStructure
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import javax.inject.Inject
+import kotlin.collections.any
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
@@ -34,6 +34,59 @@ open class JavaVirtualSourceSetsPlugin @Inject constructor(private val modelBuil
         project.configurations.findByName(base)?.extendsFrom(it)
     }
 
+    private fun SourceSet.addJavaSources(dependency: SourceSet) {
+        java.source(dependency.java)
+        resources.source(dependency.resources)
+
+        dependency.extensions.getByType(VirtualExtension::class.java).dependsOn.all {
+            addJavaSources(it)
+        }
+    }
+
+    @OptIn(InternalKotlinGradlePluginApi::class)
+    private fun SourceSet.addKotlinCommonSources(kotlin: KotlinJvmProjectExtension, dependency: SourceSet, compileTask: KotlinCompile) {
+        val kotlinSourceSet = kotlin.sourceSets.getByName(name)
+        val kotlinDependency = kotlin.sourceSets.getByName(dependency.name)
+
+        val isK2 = compileTask.compilerOptions.languageVersion
+            .orElse(KotlinVersion.DEFAULT)
+            .map { it >= KotlinVersion.KOTLIN_2_0 }
+
+        fun <T> addK2Argument(property: HasMultipleValues<T>, value: () -> T) {
+            property.addAll(isK2.map {
+                if (it) {
+                    listOf(value())
+                } else {
+                    emptyList()
+                }
+            })
+        }
+
+        fun addFragment(sourceSet: KotlinSourceSet) {
+            if (compileTask.multiplatformStructure.fragments.get().any { it.fragmentName == sourceSet.name }) {
+                return
+            }
+
+            addK2Argument(compileTask.multiplatformStructure.fragments) {
+                K2MultiplatformStructure.Fragment(sourceSet.name, sourceSet.kotlin.asFileTree)
+            }
+        }
+
+        addK2Argument(compileTask.multiplatformStructure.refinesEdges) {
+            K2MultiplatformStructure.RefinesEdge(kotlinSourceSet.name, kotlinDependency.name)
+        }
+
+        addFragment(kotlinSourceSet)
+        addFragment(kotlinDependency)
+
+        commonSourceSet.get(compileTask).from(kotlinDependency.kotlin)
+        compileTask.source(kotlinDependency.kotlin)
+
+        dependency.extensions.getByType(VirtualExtension::class.java).dependsOn.all {
+            dependency.addKotlinCommonSources(kotlin, it, compileTask)
+        }
+    }
+
     private fun SourceSet.addDependency(dependency: SourceSet, project: Project) {
         project.extend(apiConfigurationName, dependency.apiConfigurationName)
         project.extend(compileOnlyApiConfigurationName, dependency.compileOnlyApiConfigurationName)
@@ -41,56 +94,21 @@ open class JavaVirtualSourceSetsPlugin @Inject constructor(private val modelBuil
         project.extend(runtimeOnlyConfigurationName, dependency.runtimeOnlyConfigurationName)
         project.extend(compileOnlyConfigurationName, dependency.compileOnlyConfigurationName)
 
-        if (System.getProperty("idea.sync.active", "false").toBoolean()) {
+        if (System.getProperty("idea.sync.active")?.toBoolean() == true) {
+            // TODO Temporary until an intellij plugin is complete
             compileClasspath += dependency.output
         }
 
-        java.source(dependency.java)
-        resources.source(dependency.resources)
+        addJavaSources(dependency)
 
         project.plugins.withId(KOTLIN_JVM) {
             val kotlin = project.extensions.getByType(KotlinJvmProjectExtension::class.java)
             val kotlinCompilation = kotlin.target.compilations.getByName(name)
 
-            val kotlinSourceSet = kotlin.sourceSets.getByName(name)
-            val kotlinDependency = kotlin.sourceSets.getByName(dependency.name)
-
-            project.tasks.named(kotlinCompilation.compileKotlinTaskName, KotlinCompile::class.java) @OptIn(InternalKotlinGradlePluginApi::class) {
+            project.tasks.named(kotlinCompilation.compileKotlinTaskName, KotlinCompile::class.java) {
                 it.multiPlatformEnabled.set(true)
 
-                val isK2 = it.compilerOptions.languageVersion
-                    .orElse(KotlinVersion.DEFAULT)
-                    .map { it >= KotlinVersion.KOTLIN_2_0 }
-
-                fun <T> addK2Argument(property: HasMultipleValues<T>, value: () -> T) {
-                    property.addAll(isK2.map {
-                        if (it) {
-                            listOf(value())
-                        } else {
-                            emptyList()
-                        }
-                    })
-                }
-
-                fun addFragment(sourceSet: KotlinSourceSet) {
-                    if (it.multiplatformStructure.fragments.get().any { it.fragmentName == sourceSet.name }) {
-                        return
-                    }
-
-                    addK2Argument(it.multiplatformStructure.fragments) {
-                        K2MultiplatformStructure.Fragment(sourceSet.name, sourceSet.kotlin.asFileTree)
-                    }
-                }
-
-                addK2Argument(it.multiplatformStructure.refinesEdges) {
-                    K2MultiplatformStructure.RefinesEdge(name, dependency.name)
-                }
-
-                addFragment(kotlinSourceSet)
-                addFragment(kotlinDependency)
-
-                commonSourceSet.get(it).from(kotlinDependency.kotlin)
-                it.source(kotlinDependency.kotlin)
+                addKotlinCommonSources(kotlin, dependency, it)
             }
         }
     }

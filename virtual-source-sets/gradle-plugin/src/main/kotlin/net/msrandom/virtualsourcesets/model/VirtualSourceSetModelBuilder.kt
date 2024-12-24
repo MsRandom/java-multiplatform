@@ -1,5 +1,6 @@
 package net.msrandom.virtualsourcesets.model
 
+import com.google.auto.service.AutoService
 import net.msrandom.virtualsourcesets.VirtualExtension
 import org.gradle.api.Project
 import org.gradle.api.tasks.SourceSetContainer

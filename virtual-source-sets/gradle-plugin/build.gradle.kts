@@ -1,6 +1,7 @@
 plugins {
     java
     kotlin("jvm")
+    id("com.google.devtools.ksp")
     `java-gradle-plugin`
     `maven-publish`
 }
@@ -29,6 +30,8 @@ repositories {
 }
 
 dependencies {
+    ksp(group = "dev.zacsweers.autoservice", name = "auto-service-ksp", version = "1.2.0")
+    compileOnly(group = "com.google.auto.service", name = "auto-service-annotations", version = "1.1.1")
     api(group = "dev.gradleplugins", name = "gradle-api", version = "8.2")
 
     compileOnly(kotlin("gradle-plugin"))
