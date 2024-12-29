@@ -4,7 +4,7 @@
 These utilities utilize the static linkage for handling common code, rather than dynamic linking (Jars in the classpath) which is what's usually used in the JVM Ecosystem
 
 ## Virtual SourceSets
-The base for any of jvm-multiplatform to work, it allows the static linking to work -
+The base for any of jvm-multiplatform utility to work, as it allows the statically linked source sets to work
 - In Java, by including the common code in the same compilation
 - In Kotlin by utilizing a multiplatform structure while still compiling only for the JVM platform
 
