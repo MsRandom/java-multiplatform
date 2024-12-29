@@ -2,6 +2,7 @@ package net.msrandom.classextensions.kotlin.plugin
 
 import net.msrandom.classextensions.ClassExtension
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirFile
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
@@ -28,17 +29,17 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
 internal class FirClassExtensionResolver(private val session: FirSession) {
-    private val extendedClasses by lazy {
-        session.predicateBasedProvider.getSymbolsByPredicate(LookupPredicate.AnnotatedWith(setOf(AnnotationFqn(ClassExtension::class.java.name))))
+    private val classExtensions by lazy {
+        session.predicateBasedProvider.getSymbolsByPredicate(PREDICATE)
     }
 
-    fun getExtensions(expected: FirClassSymbol<*>) = extendedClasses.asSequence().mapNotNull {
+    fun getExtensions(expected: FirClassSymbol<*>) = classExtensions.asSequence().mapNotNull {
         if (it !is FirRegularClassSymbol) return@mapNotNull null
 
         val annotation = it.getAnnotationByClassId(classExtensionAnnotation, session)!!
         val value = annotation.findArgumentByName(Name.identifier(ClassExtension::value.name)) ?: return@mapNotNull null
 
-        val file = session.firProvider.getFirClassifierContainerFile(expected)
+        val file = session.firProvider.getFirClassifierContainerFileIfAny(expected) ?: return@mapNotNull null
         val typeName = (value as FirCall).argument.source?.lighterASTNode?.toString() ?: return@mapNotNull null
 
         val annotationTarget = resolveType(file, typeName) ?: return@mapNotNull null
@@ -103,10 +104,12 @@ internal class FirClassExtensionResolver(private val session: FirSession) {
         return null
     }
 
-    private companion object {
-        val classExtensionAnnotation = classId(ClassExtension::class.java)
+    companion object {
+        internal val PREDICATE = LookupPredicate.AnnotatedWith(setOf(AnnotationFqn(ClassExtension::class.java.name)))
 
-        private fun classId(cls: Class<*>) = FqName(cls.name).let {
+        private val classExtensionAnnotation = classId(ClassExtension::class.java)
+
+        internal fun classId(cls: Class<*>) = FqName(cls.name).let {
             ClassId(it.parent(), it.shortName())
         }
     }

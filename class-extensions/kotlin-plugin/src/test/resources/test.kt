@@ -1,26 +1,47 @@
 package a.b.c
 
 import net.msrandom.classextensions.ClassExtension
-import net.msrandom.classextensions.ExtensionShadow
 import net.msrandom.classextensions.ExtensionInject
+import net.msrandom.classextensions.ExtensionShadow
 
 class A {
     val a: Int = 1
+
+    fun toBeShadowed() {
+        println("Shadowed!")
+    }
 }
 
-internal interface I {}
+interface I {
+    fun hi()
+}
 
 @ClassExtension(A::class)
-class AExtension : a.b.c.I {
+class AExtension : I {
     @ExtensionShadow
-    val a: Int = 0
+    val a: Int = TODO()
 
-    @get:ExtensionInject
     val b: Int
-        get() = a
+        @ExtensionInject get() = a
+
+    @ExtensionInject
+    private var c = 5
+
+    @ExtensionShadow
+    fun toBeShadowed(): Unit = TODO()
+
+    @ExtensionInject
+    override fun hi() {
+        println("hi")
+    }
 
     @ExtensionInject
     fun injected() {
         println(b)
     }
+}
+
+fun main() {
+    println(A().hi())
+    println(A().b)
 }

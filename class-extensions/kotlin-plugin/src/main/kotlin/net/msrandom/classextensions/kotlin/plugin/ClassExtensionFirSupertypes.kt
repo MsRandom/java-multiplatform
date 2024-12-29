@@ -8,6 +8,7 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.FirUserTypeRef
@@ -15,7 +16,7 @@ import org.jetbrains.kotlin.fir.types.FirUserTypeRef
 class ClassExtensionFirSupertypes(session: FirSession) : FirSupertypeGenerationExtension(session) {
     private val resolver = FirClassExtensionResolver(session)
 
-    override fun computeAdditionalSupertypes(classLikeDeclaration: FirClassLikeDeclaration, resolvedSupertypes: List<FirResolvedTypeRef>, typeResolver: TypeResolveService): List<FirResolvedTypeRef> {
+    override fun computeAdditionalSupertypes(classLikeDeclaration: FirClassLikeDeclaration, resolvedSupertypes: List<FirResolvedTypeRef>, typeResolver: TypeResolveService): List<ConeKotlinType> {
         val symbol = classLikeDeclaration.symbol
 
         if (symbol !is FirClassSymbol<*>) {
@@ -26,9 +27,9 @@ class ClassExtensionFirSupertypes(session: FirSession) : FirSupertypeGenerationE
 
         return newSuperTypes.map {
             if (it is FirUserTypeRef) {
-                typeResolver.resolveUserType(it)
+                typeResolver.resolveUserType(it).coneType
             } else {
-                it as FirResolvedTypeRef
+                (it as FirResolvedTypeRef).coneType
             }
         }
     }
@@ -37,7 +38,5 @@ class ClassExtensionFirSupertypes(session: FirSession) : FirSupertypeGenerationE
         return declaration.symbol is FirClassSymbol<*> && resolver.getExtensions(declaration.symbol as FirClassSymbol<*>).any { it.resolvedSuperTypeRefs.isNotEmpty() }
     }
 
-    override fun FirDeclarationPredicateRegistrar.registerPredicates() {
-        register(LookupPredicate.AnnotatedWith(setOf(AnnotationFqn(ClassExtension::class.java.name))))
-    }
+    override fun FirDeclarationPredicateRegistrar.registerPredicates() = register(FirClassExtensionResolver.PREDICATE)
 }
