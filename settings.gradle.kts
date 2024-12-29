@@ -1,6 +1,6 @@
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
-rootProject.name = "java-multiplatform"
+rootProject.name = "jvm-multiplatform"
 
 fun includeSubproject(name: String, path: String) {
     include(name)
@@ -18,7 +18,8 @@ includeSubproject("java-expect-actual-processor", "java-expect-actual/processor"
 includeSubproject("kmp-stub-annotations", "kmp-stubs/annotations")
 includeSubproject("kmp-stubs-processor", "kmp-stubs/processor")
 
-includeSubproject("class-extension-idea", "class-extensions/idea-plugin")
+includeSubproject("class-extensions-idea", "class-extensions/idea-plugin")
+includeSubproject("class-extensions-gradle-plugin", "class-extensions/gradle-plugin")
 includeSubproject("class-extension-annotations", "class-extensions/annotations")
-includeSubproject("class-extension-java-processor", "class-extensions/java-processor")
-includeSubproject("class-extension-kotlin-plugin", "class-extensions/kotlin-plugin")
+includeSubproject("java-class-extension-processor", "class-extensions/java-processor")
+includeSubproject("kotlin-class-extension-plugin", "class-extensions/kotlin-plugin")
