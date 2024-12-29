@@ -30,7 +30,7 @@ repositories {
 
 configurations.named(gradleToolingExtension.compileClasspathConfigurationName) {
     resolutionStrategy.dependencySubstitution {
-        substitute(module("org.jetbrains.intellij.deps:gradle-api")).using(module("dev.gradleplugins:gradle-api:8.2"))
+        substitute(module("org.jetbrains.intellij.deps:gradle-api")).using(module("dev.gradleplugins:gradle-api:8.11"))
     }
 }
 

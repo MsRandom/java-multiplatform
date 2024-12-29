@@ -4,7 +4,9 @@
 These utilities utilize the static linkage for handling common code, rather than dynamic linking (Jars in the classpath) which is what's usually used in the JVM Ecosystem
 
 ## Virtual SourceSets
-The base for any of jvm-multiplatform to work, it allows the static linking to work, in Java by including the common code in the same compilation, and in Kotlin by utilizing a multiplatform structure while still compiling only for the JVM platform
+The base for any of jvm-multiplatform to work, it allows the static linking to work -
+- In Java, by including the common code in the same compilation
+- In Kotlin by utilizing a multiplatform structure while still compiling only for the JVM platform
 
 ```groovy
 sourceSets {
@@ -19,7 +21,6 @@ sourceSets {
 The jvm-multiplatform collection includes @Expect/@Actual annotations and class extensions for the Java platform, examples are as follows:
 
 ### Expect/Actual
-
 Allow replacing expected platform stubs with actualized platform logic, similarly to kotlin's expect/actual
 
 ```java
@@ -98,6 +99,19 @@ public class CommonActual {
 }
 ```
 
+Can be configured as follows:
+```groovy
+// Assuming the previous structure of common main + platform source set
+tasks.compileJava {
+    options.compilerArgs.add("-AgenerateExpectStubs")
+}
+
+dependencies {
+    compileOnly("net.msrandom:java-expect-actual-annotations:1.0.0")
+    annotationProcessor("net.msrandom:java-expect-actual-processor:1.0.8")
+}
+```
+
 ### Class Extensions
 More granular than @Expect/@Actual, but allows injecting methods and fields into a base class and shadowing existing members. Useful for interface injection, along with adding platform specific code.
 
@@ -144,6 +158,13 @@ public class CommonExtension implements SomeInterface {
     public void interfaceMethod() {
         System.out.println("Extension injected");
     }
+}
+```
+
+Class extensions can be applied using a Gradle Plugin, for both the Java and Kotlin versions
+```groovy
+plugins {
+    id "net.msrandom.classextensions"
 }
 ```
 

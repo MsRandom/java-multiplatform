@@ -1,22 +1,18 @@
 plugins {
-    java
     kotlin("jvm")
-    id("com.google.devtools.ksp")
     `java-gradle-plugin`
     `maven-publish`
 }
 
 gradlePlugin {
-    plugins.create("javaVirtualSourceSets") {
+    plugins.create("jvmClassExtensions") {
         id = project.name
 
-        displayName = "Java Virtual Source Sets"
+        displayName = "JVM Class Extensions"
 
-        description =
-            "A plugin that allows including a source set for compilation with another, " +
-            "rather than compiling separately and depending on each other"
+        description = "All"
 
-        implementationClass = "net.msrandom.virtualsourcesets.JavaVirtualSourceSetsPlugin"
+        implementationClass = "net.msrandom.classextensions.ClassExtensionsPlugin"
     }
 }
 
@@ -30,9 +26,6 @@ repositories {
 }
 
 dependencies {
-    ksp(group = "dev.zacsweers.autoservice", name = "auto-service-ksp", version = "1.2.0")
-    compileOnly(group = "com.google.auto.service", name = "auto-service-annotations", version = "1.1.1")
-
     compileOnly(kotlin("gradle-plugin"))
 }
 
