@@ -59,7 +59,7 @@ open class JavaVirtualSourceSetsPlugin @Inject constructor(private val modelBuil
         kotlin: KotlinJvmProjectExtension,
         dependency: SourceSet,
         info: SourceSetStaticLinkageInfo,
-        compileTask: KotlinCompile
+        compileTask: KotlinCompile,
     ) {
         val kotlinSourceSet = kotlin.sourceSets.getByName(name)
         val kotlinDependency = kotlin.sourceSets.getByName(dependency.name)
@@ -97,11 +97,13 @@ open class JavaVirtualSourceSetsPlugin @Inject constructor(private val modelBuil
 
         val emptyList: Provider<List<K2MultiplatformStructure.RefinesEdge>> = kotlin.project.provider { emptyList() }
 
+        val weakLinks = info.weakTreeLinks(dependency)
+
         compileTask.multiplatformStructure.refinesEdges.addAll(isK2.flatMap {
             if (it) {
-                info.weakTreeLinks(this).map {
+                weakLinks.map {
                     it.map { to ->
-                        K2MultiplatformStructure.RefinesEdge(kotlinSourceSet.name, to.name)
+                        K2MultiplatformStructure.RefinesEdge(kotlinDependency.name, to.name)
                     }
                 }
             } else {
