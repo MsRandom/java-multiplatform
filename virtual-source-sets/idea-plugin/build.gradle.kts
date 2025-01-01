@@ -1,7 +1,6 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    java
     kotlin("jvm")
     id("org.jetbrains.intellij")
     groovy
@@ -28,16 +27,12 @@ repositories {
     maven(url = "https://www.jetbrains.com/intellij-repository/releases/")
 }
 
-configurations.named(gradleToolingExtension.compileClasspathConfigurationName) {
-    resolutionStrategy.dependencySubstitution {
-        substitute(module("org.jetbrains.intellij.deps:gradle-api")).using(module("dev.gradleplugins:gradle-api:8.11"))
-    }
-}
-
 dependencies {
     gradleToolingExtension.implementationConfigurationName(kotlin("stdlib"))
 
-    gradleToolingExtension.compileOnlyConfigurationName(group = "com.jetbrains.intellij.gradle", name = "gradle-tooling-extension", version = "241.18034.82")
+    gradleToolingExtension.compileOnlyConfigurationName(group = "com.jetbrains.intellij.gradle", name = "gradle-tooling-extension", version = "241.18034.82") {
+        exclude("org.jetbrains.intellij.deps", "gradle-api")
+    }
 
     implementation(files(gradleToolingExtensionJar))
 }
@@ -87,9 +82,5 @@ publishing {
 
             artifact(tasks.buildPlugin)
         }
-    }
-
-    repositories {
-        mavenLocal()
     }
 }

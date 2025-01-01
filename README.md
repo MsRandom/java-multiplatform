@@ -12,7 +12,7 @@ The base for any jvm-multiplatform utility to work, as it allows the statically 
 sourceSets {
     platform {
         // Add main as a common, while the platform source set is the one expected to be runnable
-        dependsOn.add(sourceSets.main)
+        staticLinkage.link(sourceSets.main)
     }
 }
 ```

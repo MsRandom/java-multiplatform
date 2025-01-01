@@ -1,5 +1,4 @@
 plugins {
-    java
     kotlin("jvm")
     id("com.google.devtools.ksp")
     `java-gradle-plugin`
@@ -8,7 +7,7 @@ plugins {
 
 gradlePlugin {
     plugins.create("javaVirtualSourceSets") {
-        id = project.name
+        id = "net.msrandom.virtual-source-sets"
 
         displayName = "Java Virtual Source Sets"
 
@@ -21,8 +20,11 @@ gradlePlugin {
 }
 
 java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(8))
     withSourcesJar()
+}
+
+kotlin {
+    jvmToolchain(8)
 }
 
 repositories {
@@ -34,20 +36,4 @@ dependencies {
     compileOnly(group = "com.google.auto.service", name = "auto-service-annotations", version = "1.1.1")
 
     compileOnly(kotlin("gradle-plugin"))
-}
-
-publishing {
-    repositories {
-        mavenLocal()
-
-        maven("https://maven.msrandom.net/repository/root/") {
-            credentials {
-                val mavenUsername: String? by project
-                val mavenPassword: String? by project
-
-                username = mavenUsername
-                password = mavenPassword
-            }
-        }
-    }
 }

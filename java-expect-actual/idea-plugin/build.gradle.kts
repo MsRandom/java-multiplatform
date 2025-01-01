@@ -1,5 +1,4 @@
 plugins {
-  java
   kotlin("jvm")
   id("org.jetbrains.intellij")
 }

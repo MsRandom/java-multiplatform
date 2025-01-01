@@ -1,7 +1,7 @@
 package net.msrandom.virtualsourcesets.model
 
 import com.google.auto.service.AutoService
-import net.msrandom.virtualsourcesets.VirtualExtension
+import net.msrandom.virtualsourcesets.SourceSetStaticLinkageInfo
 import org.gradle.api.Project
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.tooling.provider.model.ToolingModelBuilder
@@ -32,7 +32,7 @@ class VirtualSourceSetModelBuilder : ToolingModelBuilder {
             .all { sourceSet ->
                 val dependencies = computeSourceSet(sourceSet.name).dependencies
 
-                sourceSet.extensions.getByType(VirtualExtension::class.java).dependsOn.all {
+                sourceSet.extensions.getByType(SourceSetStaticLinkageInfo::class.java).links.all {
                     dependencies.add(computeSourceSet(it.name))
                 }
             }

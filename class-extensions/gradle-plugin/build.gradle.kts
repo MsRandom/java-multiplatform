@@ -6,7 +6,7 @@ plugins {
 
 gradlePlugin {
     plugins.create("jvmClassExtensions") {
-        id = project.name
+        id = "net.msrandom.classextensions"
 
         displayName = "JVM Class Extensions"
 
@@ -17,8 +17,11 @@ gradlePlugin {
 }
 
 java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(8))
     withSourcesJar()
+}
+
+kotlin {
+    jvmToolchain(8)
 }
 
 repositories {
@@ -27,20 +30,4 @@ repositories {
 
 dependencies {
     compileOnly(kotlin("gradle-plugin"))
-}
-
-publishing {
-    repositories {
-        mavenLocal()
-
-        maven("https://maven.msrandom.net/repository/root/") {
-            credentials {
-                val mavenUsername: String? by project
-                val mavenPassword: String? by project
-
-                username = mavenUsername
-                password = mavenPassword
-            }
-        }
-    }
 }

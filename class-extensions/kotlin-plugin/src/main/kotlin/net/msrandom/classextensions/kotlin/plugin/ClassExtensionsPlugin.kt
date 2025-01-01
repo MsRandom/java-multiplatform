@@ -8,7 +8,6 @@ import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
 
-@AutoService(FirExtensionRegistrar::class)
 class ClassExtensionsFirExtensionRegistrar : FirExtensionRegistrar() {
     override fun ExtensionRegistrarContext.configurePlugin() {
         +::ClassExtensionFirDeclarations
@@ -25,6 +24,5 @@ class ClassExtensionsPlugin : CompilerPluginRegistrar() {
     override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {
         FirExtensionRegistrarAdapter.registerExtension(ClassExtensionsFirExtensionRegistrar())
         IrGenerationExtension.registerExtension(ExcludeClassExtensionsIrGenerationExtension())
-
     }
 }
